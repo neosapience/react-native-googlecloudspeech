@@ -20,6 +20,8 @@ import android.util.Log
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.WritableMap
 import com.google.api.gax.rpc.ApiStreamObserver
+import com.google.api.gax.rpc.ResponseObserver
+import com.google.api.gax.rpc.StreamController
 import com.google.auth.oauth2.GoogleCredentials
 import com.google.cloud.speech.v1.RecognitionConfig
 import com.google.cloud.speech.v1.SpeechClient
@@ -27,6 +29,7 @@ import com.google.cloud.speech.v1.SpeechSettings
 import com.google.cloud.speech.v1.StreamingRecognitionConfig
 import com.google.cloud.speech.v1.StreamingRecognizeRequest
 import com.google.cloud.speech.v1.StreamingRecognizeResponse
+import java.lang.Exception
 import java.util.concurrent.atomic.AtomicBoolean
 
 private const val TAG = "Speech"
@@ -50,31 +53,36 @@ class SpeechRecognition(private val locale: String, private val credential: Stri
             }.build())
 
             // start streaming the data to the server and collect responses
-            val requestStream = mSpeechClient?.streamingRecognizeCallable()?.bidiStreamingCall(object : ApiStreamObserver<StreamingRecognizeResponse> {
-                override fun onNext(value: StreamingRecognizeResponse) {
+            val requestStream = mSpeechClient?.streamingRecognizeCallable()?.splitCall(object : ResponseObserver<StreamingRecognizeResponse> {
+                override fun onComplete() {
+                    Log.d(TAG, "stream closed")
+                }
+
+                override fun onResponse(response: StreamingRecognizeResponse?) {
                     when {
-                        value.resultsCount > 0 -> {
+                        response?.resultsCount!! > 0 -> {
                             val event: WritableMap = Arguments.createMap()
-                            event.putBoolean("isFinal", value.getResults(0).isFinal)
-                            event.putString("transcript", value.getResults(0).getAlternatives(0).transcript)
+                            event.putBoolean("isFinal", response.getResults(0).isFinal)
+                            event.putString("transcript", response.getResults(0).getAlternatives(0).transcript)
                             callback.onResult(event)
                         }
                         else -> {
                             val event: WritableMap = Arguments.createMap()
-                            event.putInt("code", value.error.code)
-                            event.putString("message", value.error.message)
+                            event.putInt("code", response.error.code)
+                            event.putString("message", response.error.message)
                             callback.onError(event)
                         }
                     }
                 }
 
-                override fun onError(t: Throwable) {
+                override fun onError(t: Throwable?) {
                     Log.e(TAG, "an error occurred", t)
                 }
 
-                override fun onCompleted() {
-                    Log.d(TAG, "stream closed")
+                override fun onStart(controller: StreamController?) {
+                    Log.e(TAG, "stream is started")
                 }
+
             })
 
             // monitor the input stream and send requests as audio data becomes available
@@ -96,18 +104,22 @@ class SpeechRecognition(private val locale: String, private val credential: Stri
                 }
 
                 // send the next request
-                requestStream?.onNext(builder.build())
+                requestStream?.send(builder.build())
             }
             isStarted = true
         }
     }
 
     fun stop() {
-        if (isStarted) {
-            mAudioEmitter?.stop()
+        try {
+            if (isStarted) {
+                mAudioEmitter?.stop()
+                mSpeechClient?.shutdown()
+            }
+        } catch (e: Throwable) {
+            Log.e(TAG, "exception: ", e)
+        } finally {
             mAudioEmitter = null
-            mSpeechClient?.close()
-            mSpeechClient?.shutdownNow()
             mSpeechClient = null
             isStarted = false
         }
