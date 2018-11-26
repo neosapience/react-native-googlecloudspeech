@@ -27,8 +27,8 @@ class Googlecloudspeech {
     }
   }
 
-  start () {
-    RNGooglecloudspeech.start()
+  start (locale, credentials) {
+    RNGooglecloudspeech.start(locale, credentials)
   }
 
   stop () {
