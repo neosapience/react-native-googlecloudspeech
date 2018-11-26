@@ -98,7 +98,7 @@ class SpeechRecognition(private val locale: String, private val credential: Stri
                                     .setEncoding(RecognitionConfig.AudioEncoding.LINEAR16)
                                     .setSampleRateHertz(16000)
                                     .build())
-                            .setInterimResults(false)
+                            .setInterimResults(true)
                             .setSingleUtterance(false)
                             .build()
                 }
@@ -114,7 +114,7 @@ class SpeechRecognition(private val locale: String, private val credential: Stri
         try {
             if (isStarted) {
                 mAudioEmitter?.stop()
-                mSpeechClient?.shutdown()
+                mSpeechClient?.shutdownNow()
             }
         } catch (e: Throwable) {
             Log.e(TAG, "exception: ", e)
