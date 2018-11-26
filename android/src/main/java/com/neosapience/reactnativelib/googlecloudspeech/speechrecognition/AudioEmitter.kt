@@ -91,7 +91,7 @@ internal class AudioEmitter {
     /** Stop Streaming  */
     fun stop() {
         // stop events
-        mAudioExecutor?.shutdown()
+        mAudioExecutor?.shutdownNow()
         mAudioExecutor = null
 
         // stop recording
