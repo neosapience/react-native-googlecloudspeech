@@ -20,15 +20,16 @@ class Googlecloudspeech {
     }
   }
 
-  initialize () {
+  initialize (locale, credentials) {
     if (!this._loaded && !this._listeners) {
       this._listeners = Object.keys(this._events)
         .map((key, index) => emitter.addListener(key, this._events[key]))
     }
+    RNGooglecloudspeech.init(locale, credentials)
   }
 
-  start (locale, credentials) {
-    RNGooglecloudspeech.start(locale, credentials)
+  start () {
+    RNGooglecloudspeech.start()
   }
 
   stop () {

@@ -109,9 +109,10 @@ class SpeechRecognition(private val locale: String, private val credential: Stri
         if (isStarted) {
             mAudioEmitter?.stop()
             mAudioEmitter = null
-            isStarted = false
             mSpeechClient?.close()
             mSpeechClient?.shutdownNow()
+            mSpeechClient = null
+            isStarted = false
         }
     }
 }

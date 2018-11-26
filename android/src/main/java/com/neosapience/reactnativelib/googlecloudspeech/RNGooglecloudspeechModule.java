@@ -1,4 +1,3 @@
-
 package com.neosapience.reactnativelib.googlecloudspeech;
 
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -31,7 +30,7 @@ public class RNGooglecloudspeechModule extends ReactContextBaseJavaModule {
   }
 
   @ReactMethod
-  public void start(String locale, String credential) {
+  public void init(String locale, String credential) {
     speechRecognition = new SpeechRecognition(locale, credential, new OnRecognitionResult() {
       @Override
       public void onError(@Nullable WritableMap error) {
@@ -44,7 +43,10 @@ public class RNGooglecloudspeechModule extends ReactContextBaseJavaModule {
       }
 
     });
+  }
 
+  @ReactMethod
+  public void start() {
     speechRecognition.start();
   }
 
