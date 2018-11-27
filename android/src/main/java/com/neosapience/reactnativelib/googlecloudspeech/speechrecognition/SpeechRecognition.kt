@@ -19,7 +19,6 @@ package com.neosapience.reactnativelib.googlecloudspeech.speechrecognition
 import android.util.Log
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.WritableMap
-import com.google.api.gax.rpc.ApiStreamObserver
 import com.google.api.gax.rpc.ResponseObserver
 import com.google.api.gax.rpc.StreamController
 import com.google.auth.oauth2.GoogleCredentials
@@ -29,7 +28,6 @@ import com.google.cloud.speech.v1.SpeechSettings
 import com.google.cloud.speech.v1.StreamingRecognitionConfig
 import com.google.cloud.speech.v1.StreamingRecognizeRequest
 import com.google.cloud.speech.v1.StreamingRecognizeResponse
-import java.lang.Exception
 import java.util.concurrent.atomic.AtomicBoolean
 
 private const val TAG = "Speech"
@@ -42,6 +40,7 @@ class SpeechRecognition(private val locale: String, private val credential: Stri
     private var isStarted = false
     private var mSpeechClient : SpeechClient? = null
     private var mAudioEmitter: AudioEmitter? = null
+    private var mResponseObserver: ResponseObserver<StreamingRecognizeResponse>? = null
 
     fun start() {
         if (!isStarted) {
@@ -52,8 +51,7 @@ class SpeechRecognition(private val locale: String, private val credential: Stri
                 GoogleCredentials.fromStream(credential.byteInputStream())
             }.build())
 
-            // start streaming the data to the server and collect responses
-            val requestStream = mSpeechClient?.streamingRecognizeCallable()?.splitCall(object : ResponseObserver<StreamingRecognizeResponse> {
+            mResponseObserver = object : ResponseObserver<StreamingRecognizeResponse> {
                 override fun onComplete() {
                     Log.d(TAG, "stream closed")
                 }
@@ -73,6 +71,7 @@ class SpeechRecognition(private val locale: String, private val credential: Stri
                             callback.onError(event)
                         }
                     }
+                    Log.d(TAG, response.toString())
                 }
 
                 override fun onError(t: Throwable?) {
@@ -83,7 +82,11 @@ class SpeechRecognition(private val locale: String, private val credential: Stri
                     Log.e(TAG, "stream is started")
                 }
 
-            })
+            }
+
+
+            // start streaming the data to the server and collect responses
+            val requestStream = mSpeechClient?.streamingRecognizeCallable()?.splitCall(mResponseObserver)
 
             // monitor the input stream and send requests as audio data becomes available
             mAudioEmitter!!.start { bytes ->
@@ -114,12 +117,14 @@ class SpeechRecognition(private val locale: String, private val credential: Stri
         try {
             if (isStarted) {
                 mAudioEmitter?.stop()
+                mResponseObserver?.onComplete()
                 mSpeechClient?.shutdownNow()
             }
         } catch (e: Throwable) {
             Log.e(TAG, "exception: ", e)
         } finally {
             mAudioEmitter = null
+            mResponseObserver = null
             mSpeechClient = null
             isStarted = false
         }
