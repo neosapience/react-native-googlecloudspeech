@@ -41,6 +41,7 @@ class SpeechRecognition(private val locale: String, private val credential: Stri
     private var mSpeechClient : SpeechClient? = null
     private var mAudioEmitter: AudioEmitter? = null
     private var mResponseObserver: ResponseObserver<StreamingRecognizeResponse>? = null
+    private val SCOPE = listOf("https://www.googleapis.com/auth/cloud-platform")
 
     fun start() {
         if (!isStarted) {
@@ -48,7 +49,7 @@ class SpeechRecognition(private val locale: String, private val credential: Stri
             mAudioEmitter = AudioEmitter()
 
             mSpeechClient = SpeechClient.create(SpeechSettings.newBuilder().setCredentialsProvider {
-                GoogleCredentials.fromStream(credential.byteInputStream())
+                GoogleCredentials.fromStream(credential.byteInputStream()).createScoped((SCOPE))
             }.build())
 
             mResponseObserver = object : ResponseObserver<StreamingRecognizeResponse> {
